@@ -2,19 +2,19 @@ name: Daily OpEx & GEX Scanner
 
 on:
   schedule:
-    # Runs Monday through Friday at 19:45 UTC (3:45 PM EST, 15 min before US market close)
+    # Runs Mon-Fri at 19:45 UTC (3:45 PM EST)
     - cron: '45 19 * * 1-5'
-  workflow_dispatch: # Allows you to manually trigger it from your phone anytime
+  workflow_dispatch: # Allows manual test runs anytime
 
 jobs:
   run-scanner:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
