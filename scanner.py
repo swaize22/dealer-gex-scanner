@@ -184,11 +184,18 @@ def run():
                     f"• *Flow:* Vanna/Charm tailwind active."
                 )
 
-    if signals:
+   if signals:
         full_msg = "\n\n━━━━━━━━━━━━━━━\n\n".join(signals)
         send_telegram(f"🏖️ *Options Quantitative Radar*\n\n{full_msg}")
     else:
-        print("Scanned successfully. No high-probability setups triggered today.")
-
-if __name__ == "__main__":
-    run()
+        # Diagnostic ping so you know it's working while testing
+        status_msg = (
+            f"✅ *Scanner Active & Online*\n"
+            f"• *Days to Next OpEx:* {days_to_opex} days ({opex_date})\n"
+            f"• *In Pre-OpEx Window (7-14d):* {'Yes' if in_window else 'No'}\n"
+            f"• *VIX 5D Cooling:* {'Yes' if vix_cooling else 'No'}\n"
+            f"• *Monitored Tickers:* {', '.join(WATCHLIST)}\n"
+            f"• *Status:* Standing by until the 7–14 day window opens."
+        )
+        send_telegram(status_msg)
+        print(status_msg)
