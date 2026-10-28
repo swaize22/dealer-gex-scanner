@@ -10,7 +10,12 @@ from datetime import datetime, date, timedelta
 # ==========================================
 # 1. CONFIGURATION & WATCHLIST
 # ==========================================
-WATCHLIST = ["SPY", "QQQ", "NVDA", "TSLA", "AAPL"]
+WATCHLIST = [
+    "SPY", "QQQ", "IWM", "IBIT", 
+    "NVDA", "PLTR", "MU", "LITE", 
+    "FORM", "ALAB", "TER", 
+    "LMT", "RTX", "LHX"
+]
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
