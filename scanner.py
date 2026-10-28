@@ -14,7 +14,7 @@ WATCHLIST = [
     "SPY", "QQQ", "IWM", "IBIT", 
     "NVDA", "PLTR", "MU", "LITE", 
     "FORM", "ALAB", "TER", 
-    "LMT", "RTX", "LHX"
+    "LMT", "RTX", "LHX", "GOOG"
 ]
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
