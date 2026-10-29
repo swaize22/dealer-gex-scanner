@@ -7,21 +7,30 @@ from scipy.stats import norm
 import yfinance as yf
 from datetime import datetime, date, timedelta
 
-# ==========================================
-# 1. CONFIGURATION & WATCHLIST
-# ==========================================
+# ==============================================================================
+# 1. WATCHLIST CONFIGURATION
+# Core indexes, BTC proxy, tech leaders + liquid fundamental decay candidates
+# ==============================================================================
 WATCHLIST = [
+    # Core Indexes, Bitcoin & Tech/Defense Leaders
     "SPY", "QQQ", "IWM", "IBIT", 
     "NVDA", "PLTR", "MU", "LITE", 
     "FORM", "ALAB", "TER", 
-    "LMT", "RTX", "LHX", "GOOG"
+    "LMT", "RTX", "LHX",
+    
+    # Fundamental Decay / High-Debt & Margin Contraction Candidates
+    "CUBE", "KDP", "AMT", "SLGN", "VMRK", "CAG", "SPG", "KMI", 
+    "BCE", "MGM", "D", "ES", "GPK", "EXC", "ENB", "KIM", 
+    "FTS", "AVAH", "CCI", "WSC", "INVH", "ARE", "IRM", "LNT", 
+    "KRC", "RKT", "SGRY", "BLDR", "DOC", "KRG", "HIW", "CUZ", 
+    "WELL", "RNW", "COLD", "CZR", "UWMC", "DEI", "MAC", "WY"
 ]
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 def send_telegram(message: str):
-    """Sends a robust HTML-formatted message to Telegram."""
+    """Sends an HTML-formatted message to Telegram."""
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         print(f"[NO TELEGRAM CONFIGURED - LOGGING ONLY]:\n{message}")
         return
@@ -69,7 +78,7 @@ def bs_gamma(S, K, T, sigma, r=0.04):
         return 0.0
 
 def calculate_gex_and_levels(ticker_symbol: str):
-    """Computes Net GEX, Call Wall, Put Wall, and Zero Gamma."""
+    """Computes Net GEX, Call Wall, Put Wall, Zero Gamma, and IV Skew Ratio."""
     try:
         tk = yf.Ticker(ticker_symbol)
         hist = tk.history(period="5d")
@@ -110,7 +119,7 @@ def calculate_gex_and_levels(ticker_symbol: str):
                         if oi > 0 and iv > 0.01 and (0.6 * spot <= k <= 1.4 * spot):
                             gamma = bs_gamma(spot, k, T, iv)
                             gex = gamma * oi * 100.0 * (spot ** 2) * 0.01
-                            records.append({'strike': k, 'type': 'call', 'oi': oi, 'gex': gex})
+                            records.append({'strike': k, 'type': 'call', 'oi': oi, 'iv': iv, 'gex': gex})
 
                 # Process puts
                 if hasattr(chain, 'puts') and not chain.puts.empty:
@@ -125,10 +134,9 @@ def calculate_gex_and_levels(ticker_symbol: str):
                         if oi > 0 and iv > 0.01 and (0.6 * spot <= k <= 1.4 * spot):
                             gamma = bs_gamma(spot, k, T, iv)
                             gex = -1.0 * (gamma * oi * 100.0 * (spot ** 2) * 0.01)
-                            records.append({'strike': k, 'type': 'put', 'oi': oi, 'gex': gex})
+                            records.append({'strike': k, 'type': 'put', 'oi': oi, 'iv': iv, 'gex': gex})
 
-            except Exception as e:
-                print(f"Error processing expiration {exp_str} for {ticker_symbol}: {e}")
+            except Exception:
                 continue
 
         if not records:
@@ -150,12 +158,21 @@ def calculate_gex_and_levels(ticker_symbol: str):
         flip_candidates = per_strike.index[zero_crossing]
         gamma_flip = float(flip_candidates[0]) if len(flip_candidates) > 0 else (spot * 0.98)
 
+        # OTM Put IV vs OTM Call IV (Skew Ratio)
+        otm_puts = df[(df['type'] == 'put') & (df['strike'] <= spot * 0.95)]
+        otm_calls = df[(df['type'] == 'call') & (df['strike'] >= spot * 1.05)]
+        
+        otm_put_iv = float(otm_puts['iv'].median()) if not otm_puts.empty else 0.0
+        otm_call_iv = float(otm_calls['iv'].median()) if not otm_calls.empty else 0.0
+        skew_ratio = (otm_put_iv / otm_call_iv) if (otm_call_iv > 0.01 and otm_put_iv > 0.01) else 1.0
+
         return {
             'spot': spot,
             'net_gex': net_gex,
             'call_wall': call_wall,
             'put_wall': put_wall,
-            'gamma_flip': gamma_flip
+            'gamma_flip': gamma_flip,
+            'skew_ratio': skew_ratio
         }
     except Exception as e:
         print(f"Failed analyzing {ticker_symbol}: {e}")
@@ -164,7 +181,7 @@ def calculate_gex_and_levels(ticker_symbol: str):
 def run():
     in_window, days_to_opex, opex_date = is_opex_drift_window()
 
-    # VIX 5-Day Trend
+    # VIX 5-Day Trend Check
     vix_cooling = False
     try:
         vix = yf.Ticker("^VIX")
@@ -184,20 +201,43 @@ def run():
         spot = data['spot']
         flip = data['gamma_flip']
         call_w = data['call_wall']
+        put_w = data['put_wall']
         net_gex = data['net_gex']
+        skew = data.get('skew_ratio', 1.0)
 
         is_positive_regime = (spot > flip) and (net_gex > 0)
+        is_negative_regime = (spot < flip) and (net_gex < 0)
 
-        # 1. Hard Invalidation / Stop warning
+        # ======================================================================
+        # 1. HIGH PROBABILITY SHORT TRIGGER
+        # Condition: Negative Gamma + Institutional Put Skew >= 1.15 + Breaching Put Wall
+        # ======================================================================
+        is_breaking_put_wall = spot <= (put_w * 1.01)
+        if is_negative_regime and (skew >= 1.15) and is_breaking_put_wall:
+            signals.append(
+                f"🔴 <b>HIGH PROB SHORT: {symbol}</b>\n"
+                f"• <b>Spot:</b> ${spot:.2f} (Below Flip: ${flip:.2f})\n"
+                f"• <b>Put Wall:</b> ${put_w:.2f} (Support collapsed/tagged)\n"
+                f"• <b>IV Skew Ratio:</b> {skew:.2f}x (Institutional Put Demand)\n"
+                f"• <b>Regime:</b> Negative Gamma (-${abs(net_gex)/1e6:.1f}M)\n"
+                f"• <b>Flow:</b> Dealers forced to sell drops. Cascade active."
+            )
+            continue
+
+        # ======================================================================
+        # 2. REGIME WARNING (Invalidation for longs)
+        # ======================================================================
         if spot <= flip:
             signals.append(
                 f"🚨 <b>REGIME WARNING: {symbol}</b>\n"
                 f"• Spot (${spot:.2f}) closed <b>below Gamma Flip</b> (${flip:.2f})\n"
-                f"• Negative gamma regime. Downside risk elevated."
+                f"• Negative gamma regime. Downside volatility elevated."
             )
             continue
 
-        # 2. Take Profit Alert (within 0.5% of Call Wall)
+        # ======================================================================
+        # 3. TAKE PROFIT ALERT (Target Reached)
+        # ======================================================================
         if spot >= (call_w * 0.995):
             signals.append(
                 f"🎯 <b>TARGET REACHED: {symbol}</b>\n"
@@ -206,12 +246,14 @@ def run():
             )
             continue
 
-        # 3. High Probability Entry Setup
+        # ======================================================================
+        # 4. HIGH PROBABILITY LONG SETUP
+        # ======================================================================
         if in_window and is_positive_regime and vix_cooling:
             upside_to_wall = ((call_w - spot) / spot) * 100.0
             if upside_to_wall >= 1.5:
                 signals.append(
-                    f"🟢 <b>HIGH PROB SETUP: {symbol}</b>\n"
+                    f"🟢 <b>HIGH PROB LONG: {symbol}</b>\n"
                     f"• <b>Days to OpEx:</b> {days_to_opex} days ({opex_date})\n"
                     f"• <b>Spot:</b> ${spot:.2f}\n"
                     f"• <b>Regime:</b> Positive GEX (+${net_gex/1e6:.1f}M)\n"
@@ -224,14 +266,14 @@ def run():
         full_msg = "\n\n━━━━━━━━━━━━━━━\n\n".join(signals)
         send_telegram(f"🏖️ <b>Options Quantitative Radar</b>\n\n{full_msg}")
     else:
-        # Diagnostic heartbeat message so you know your setup is healthy
+        # Daily diagnostic heartbeat
         status_msg = (
             f"✅ <b>Scanner Active & Online</b>\n\n"
             f"• <b>Days to Next OpEx:</b> {days_to_opex} days ({opex_date})\n"
             f"• <b>In Pre-OpEx Window (7-14d):</b> {'Yes' if in_window else 'No'}\n"
             f"• <b>VIX Cooling:</b> {'Yes' if vix_cooling else 'No'}\n"
-            f"• <b>Tickers Monitored:</b> {', '.join(WATCHLIST)}\n\n"
-            f"<i>No new setups triggered today. Standing by for OpEx window.</i>"
+            f"• <b>Tickers Monitored:</b> {len(WATCHLIST)} symbols\n\n"
+            f"<i>No new setups triggered today. Standing by.</i>"
         )
         send_telegram(status_msg)
         print(status_msg)
