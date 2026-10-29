@@ -246,8 +246,33 @@ def run():
             )
             continue
 
+
+        # ==========================================================
+        # 4. ADVANCED SHORT WATERFALL SETUP
+        # ==========================================================
+        # 1. Negative Gamma: Spot below Gamma Flip and Net GEX < 0
+        # 2. Institutional Hedging: OTM Put IV trades at 20%+ premium to Call IV
+        # 3. Floor Breakdown: Spot has decisively crossed below the Put Wall
+        is_negative_regime = (spot < flip) and (net_gex < 0)
+        is_skew_steep = skew >= 1.20
+        put_wall_collapsed = spot < (put_w * 0.99)  # 1% below Put Wall
+
+        if is_negative_regime and is_skew_steep and put_wall_collapsed:
+            signals.append(
+                f"🚨 <b>SHORT WATERFALL CONFIRMED: {symbol}</b>\n"
+                f"• <b>Spot:</b> ${spot:.2f}\n"
+                f"• <b>Gamma Flip:</b> ${flip:.2f} (Trapped in Negative GEX)\n"
+                f"• <b>Put Wall:</b> ${put_w:.2f} (Floor BROKEN - Air Pocket)\n"
+                f"• <b>Skew Inversion:</b> {skew:.2f}x (Heavy Institutional Put Buying)\n"
+                f"• <b>Dealer Action:</b> Forced to short into price drops.\n"
+                f"• <b>Execution:</b> Bear Put Spread (30–45 DTE). Stop: Close back above ${flip:.2f}."
+            )
+            continue
+
+        
+
         # ======================================================================
-        # 4. HIGH PROBABILITY LONG SETUP
+        # 5. HIGH PROBABILITY LONG SETUP
         # ======================================================================
         if in_window and is_positive_regime and vix_cooling:
             upside_to_wall = ((call_w - spot) / spot) * 100.0
