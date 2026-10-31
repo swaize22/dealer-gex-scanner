@@ -15,6 +15,31 @@ SQUEEZE_WATCHLIST = [
     "CVNA", "UPST", "AI", "MARA", "RIOT", "RIVN", "LCID", "BYND",
     "GME", "AMC", "SOFI", "PLTR", "ENVX", "IONQ", "RKLB", "ACHR",
     "LITE", "FORM", "ALAB", "TER", "MU", "RKT", "UWMC"
+
+    # =========================================================================
+    # 1. CORE BENCHMARKS, BITCOIN PROXY & MOMENTUM LEADERS
+    # =========================================================================
+    "SPY", "QQQ", "IWM", "IBIT", 
+    "NVDA", "PLTR", "MU", "LITE", 
+    "FORM", "ALAB", "TER", 
+    "LMT", "RTX", "LHX",
+
+    # =========================================================================
+    # 2. HIGH SHORT-INTEREST / SQUEEZE FUEL UNIVERSE (High SI % Float + Liquid Options)
+    # =========================================================================
+    "CVNA", "UPST", "GME", "AMC", "AI", "MARA", "RIOT", "RIVN", "LCID", 
+    "BYND", "SOFI", "ENVX", "IONQ", "RKLB", "ACHR", "SMR", "EOSE", 
+    "HTZ", "FLNC", "QXO", "DUOL", "PCT", "CLSK", "RUN", "ENPH", "SEDG",
+
+    # =========================================================================
+    # 3. KOYFIN SCREENER: STRUCTURAL DECAY & HIGH-DEBT REFINANCING CANDIDATES
+    # (Office REITs, Non-Bank Lenders, 5G Telecom, Levered Consumer)
+    # =========================================================================
+    "UWMC", "RKT", "DEI", "KRC", "ARE", "CUZ", "HIW", "DOC", "KRG", 
+    "CUBE", "AMT", "CCI", "IRM", "SPG", "KMI", "BCE", "MGM", "D", 
+    "ES", "GPK", "EXC", "ENB", "KIM", "FTS", "AVAH", "WSC", "INVH", 
+    "LNT", "SGRY", "BLDR", "WELL", "RNW", "COLD", "CZR", "MAC", "WY", 
+    "CAG", "KDP", "SLGN", "VMRK", "VNO", "BXP", "MPW", "WHR", "DVA"
 ]
 
 # Put tickers you CURRENTLY OWN here -> Activates the 3-Stage Exit Radar!
