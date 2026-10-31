@@ -29,7 +29,7 @@ SQUEEZE_WATCHLIST = [
     # =========================================================================
     "CVNA", "UPST", "GME", "AMC", "AI", "MARA", "RIOT", "RIVN", "LCID", 
     "BYND", "SOFI", "ENVX", "IONQ", "RKLB", "ACHR", "SMR", "EOSE", 
-    "HTZ", "FLNC", "QXO", "DUOL", "PCT", "CLSK", "RUN", "ENPH", "SEDG",
+    "HTZ", "FLNC", "QXO", "DUOL", "PCT", "CLSK", "RUN", "ENPH", "SEDG", "RDDT", "AAOI", "SNDK", "AXTI",
 
     # =========================================================================
     # 3. KOYFIN SCREENER: STRUCTURAL DECAY & HIGH-DEBT REFINANCING CANDIDATES
