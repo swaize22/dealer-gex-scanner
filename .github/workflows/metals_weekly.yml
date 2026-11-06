@@ -9,12 +9,18 @@ on:
 permissions:
   contents: write # Allows GitHub to commit and save the weekly PCR CSV back into your repo
 
+env:
+  # Silences the Node.js 20 deprecation warning by opting into Node 24 natively
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   update-metals-chart:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -24,18 +30,21 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install yfinance numpy pandas requests plotly
+          pip install yfinance numpy pandas requests plotly lxml
 
       - name: Run Metals & COT Terminal
         run: python metals_macro_terminal.py
 
       - name: Save Updated ETF Put/Call History CSV to Repo
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add metals_etf_pcr_history.csv
-          git diff --staged --quiet || git commit -m "Auto-append weekly GLD/SLV/GDX Put/Call data"
-          git push
+          if [ -f "metals_etf_pcr_history.csv" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add metals_etf_pcr_history.csv
+            git diff --staged --quiet || (git commit -m "Auto-append weekly GLD/SLV/GDX Put/Call data" && git pull --rebase origin main && git push)
+          else
+            echo "CSV file not generated yet, skipping commit."
+          fi
 
       - name: Upload Interactive HTML Chart
         uses: actions/upload-artifact@v4
@@ -44,4 +53,4 @@ jobs:
           path: |
             precious_metals_cot_options_dashboard.html
             metals_etf_pcr_history.csv
-          retention-days: 17 # Automatically purges old chart artifacts after 17 days
+          retention-days: 17
